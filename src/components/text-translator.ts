@@ -10,7 +10,7 @@ import { detectScriptLanguageHint } from '../constants/languages';
 import { translateWithOllama } from '../services/ollama';
 import { sharedStyles } from '../styles/shared-styles';
 import type { AppSettings } from '../types/settings';
-import { triggerBlobDownload } from '../utils/format';
+import { copyTextToClipboard, triggerBlobDownload } from '../utils/format';
 
 @customElement('ot-text-translator')
 export class OtTextTranslator extends LitElement {
@@ -373,22 +373,18 @@ export class OtTextTranslator extends LitElement {
   }
 
   private async copyText(value: string, kind: 'source' | 'target'): Promise<void> {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      if (kind === 'target') {
-        this.copiedTarget = true;
-        setTimeout(() => {
-          this.copiedTarget = false;
-        }, 1600);
-      } else {
-        this.copiedSource = true;
-        setTimeout(() => {
-          this.copiedSource = false;
-        }, 1600);
-      }
-    } catch {
-      // Clipboard API unavailable in insecure context
+    const ok = await copyTextToClipboard(value);
+    if (!ok) return;
+    if (kind === 'target') {
+      this.copiedTarget = true;
+      setTimeout(() => {
+        this.copiedTarget = false;
+      }, 1600);
+    } else {
+      this.copiedSource = true;
+      setTimeout(() => {
+        this.copiedSource = false;
+      }, 1600);
     }
   }
 

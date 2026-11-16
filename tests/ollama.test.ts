@@ -3,6 +3,7 @@ import { DEFAULT_PROMPT_TEMPLATE, DEFAULT_SETTINGS } from '../src/constants/defa
 import {
   buildTranslationPrompt,
   cleanModelTranslationOutput,
+  shouldPreferRelativeProxy,
   translateWithOllama,
 } from '../src/services/ollama';
 import '../src/components/mode-nav';
@@ -97,5 +98,28 @@ describe('Ollama Qwen3.5-MT integration & UI navigation constraints', () => {
     expect(allText.toLowerCase()).not.toContain('website');
 
     nav.remove();
+  });
+
+  it('routes LAN clients (e.g. 192.168.x.x) and 0.0.0.0 endpoints automatically through the stateless /api/ollama proxy', () => {
+    expect(
+      shouldPreferRelativeProxy(
+        { useLocalProxy: false, modelEndpoint: 'http://localhost:11434' },
+        { hostname: '192.168.1.42', protocol: 'http:' }
+      )
+    ).toBe(true);
+
+    expect(
+      shouldPreferRelativeProxy(
+        { useLocalProxy: false, modelEndpoint: 'http://0.0.0.0:11434' },
+        { hostname: 'localhost', protocol: 'http:' }
+      )
+    ).toBe(true);
+
+    expect(
+      shouldPreferRelativeProxy(
+        { useLocalProxy: false, modelEndpoint: 'http://localhost:11434' },
+        { hostname: 'localhost', protocol: 'http:' }
+      )
+    ).toBe(false);
   });
 });

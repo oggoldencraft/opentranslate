@@ -16,6 +16,7 @@ import { sharedStyles } from '../styles/shared-styles';
 import type { AppSettings } from '../types/settings';
 import {
   buildTranslatedFilename,
+  copyTextToClipboard,
   formatFileSize,
   splitTextIntoChunks,
   triggerBlobDownload,
@@ -438,16 +439,12 @@ export class OtDocumentTranslator extends LitElement {
   }
 
   private async copyTranslatedDoc(): Promise<void> {
-    if (!this.translatedDocumentText) return;
-    try {
-      await navigator.clipboard.writeText(this.translatedDocumentText);
-      this.copiedDoc = true;
-      setTimeout(() => {
-        this.copiedDoc = false;
-      }, 1500);
-    } catch {
-      // Ignore
-    }
+    const ok = await copyTextToClipboard(this.translatedDocumentText);
+    if (!ok) return;
+    this.copiedDoc = true;
+    setTimeout(() => {
+      this.copiedDoc = false;
+    }, 1500);
   }
 
   override render() {

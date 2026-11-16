@@ -5,11 +5,12 @@
   "type": "module",
   "description": "OpenTranslate — local-first Material 3 translation web app powered by Ollama (kaelri/qwen3.5-mt:2b)",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "start": "node server/proxy.mjs",
-    "proxy": "node server/proxy.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "node server/proxy.mjs --host 0.0.0.0",
+    "start:lan": "npm run build && node server/proxy.mjs --host 0.0.0.0",
+    "proxy": "node server/proxy.mjs --host 0.0.0.0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

@@ -38,6 +38,13 @@ describe('Cookie-only persistence & privacy constraints', () => {
     });
     expect(httpsLocalhost).not.toContain('Secure');
 
+    const httpLan = formatCookieHeader(SETTINGS_COOKIE_NAME, 'abc', 3600, {
+      protocol: 'http:',
+      hostname: '192.168.1.42',
+    });
+    expect(httpLan).not.toContain('Secure');
+    expect(httpLan).toContain('SameSite=Lax');
+
     const httpsProd = formatCookieHeader(SETTINGS_COOKIE_NAME, 'abc', 3600, {
       protocol: 'https:',
       hostname: 'translate.example.org',
