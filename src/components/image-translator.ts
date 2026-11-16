@@ -18,7 +18,7 @@ import {
 import { translateWithOllama } from '../services/ollama';
 import { sharedStyles } from '../styles/shared-styles';
 import type { AppSettings, OcrLineBox } from '../types/settings';
-import { buildTranslatedFilename, triggerBlobDownload } from '../utils/format';
+import { buildTranslatedFilename, copyTextToClipboard, triggerBlobDownload } from '../utils/format';
 
 @customElement('ot-image-translator')
 export class OtImageTranslator extends LitElement {
@@ -514,16 +514,12 @@ export class OtImageTranslator extends LitElement {
 
   private async copyTranslated(): Promise<void> {
     const textToCopy = this.translatedText || this.extractedText;
-    if (!textToCopy) return;
-    try {
-      await navigator.clipboard.writeText(textToCopy);
-      this.copied = true;
-      setTimeout(() => {
-        this.copied = false;
-      }, 1500);
-    } catch {
-      // Ignore
-    }
+    const ok = await copyTextToClipboard(textToCopy);
+    if (!ok) return;
+    this.copied = true;
+    setTimeout(() => {
+      this.copied = false;
+    }, 1500);
   }
 
   private downloadResult(): void {

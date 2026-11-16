@@ -72,26 +72,39 @@ export function buildTranslationPrompt(
   return rendered;
 }
 
-function shouldPreferRelativeProxy(settings: AppSettings): boolean {
+export function shouldPreferRelativeProxy(
+  settings: Pick<AppSettings, 'useLocalProxy' | 'modelEndpoint'>,
+  loc?: Pick<Location, 'hostname' | 'protocol'>
+): boolean {
   if (settings.useLocalProxy) return true;
-  if (typeof window === 'undefined') return false;
+  const currentLoc = loc ?? (typeof window !== 'undefined' ? window.location : undefined);
+  if (!currentLoc) return false;
 
-  const pageHost = window.location.hostname;
+  let ep: URL;
+  try {
+    ep = new URL(settings.modelEndpoint);
+  } catch {
+    return true;
+  }
+
+  // `0.0.0.0` is a bind-all server address, not a routable browser client destination on Windows/mobile;
+  // route via the stateless `/api/ollama` proxy so the host server connects to 127.0.0.1 cleanly.
+  if (ep.hostname === '0.0.0.0') {
+    return true;
+  }
+
+  const pageHost = currentLoc.hostname;
   const isPageLocalhost =
     pageHost === 'localhost' || pageHost === '127.0.0.1' || pageHost === '[::1]';
 
-  // When served from a remote/preview host (e.g., https://*.e2b.app), never make direct browser
-  // requests to localhost/127.0.0.1 — route cleanly through the relative `/api/ollama` proxy.
+  // When served over LAN (e.g., http://192.168.1.42:5173) or a remote preview host,
+  // never make direct browser requests to the client device's own localhost/127.0.0.1 —
+  // route cleanly through the host's relative `/api/ollama` proxy.
   if (!isPageLocalhost) {
-    try {
-      const ep = new URL(settings.modelEndpoint);
-      if (ep.hostname === 'localhost' || ep.hostname === '127.0.0.1' || ep.hostname === '[::1]') {
-        return true;
-      }
-      if (window.location.protocol === 'https:' && ep.protocol === 'http:') {
-        return true;
-      }
-    } catch {
+    if (ep.hostname === 'localhost' || ep.hostname === '127.0.0.1' || ep.hostname === '[::1]') {
+      return true;
+    }
+    if (currentLoc.protocol === 'https:' && ep.protocol === 'http:') {
       return true;
     }
   }

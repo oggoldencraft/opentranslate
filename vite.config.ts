@@ -16,6 +16,9 @@ function resolveSafeOllamaBase(rawHeader: string | string[] | undefined): string
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('Unsupported protocol');
   }
+  if (parsed.hostname === '0.0.0.0') {
+    parsed.hostname = '127.0.0.1';
+  }
   return parsed.origin;
 }
 

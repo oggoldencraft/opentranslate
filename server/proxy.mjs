@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * OpenTranslate Minimal Stateless Local Proxy & Static Asset Server
+ * OpenTranslate Minimal Stateless Local & LAN Server + CORS Proxy
+ *
+ * Binds to 0.0.0.0 by default so devices on your local network (Wi-Fi / LAN)
+ * can access OpenTranslate and translate through your host machine's local Ollama.
  *
  * Privacy guarantees:
  * - Zero database, zero disk writes, zero session or translation history storage.
@@ -9,6 +12,7 @@
  */
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
@@ -16,8 +20,22 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
-const PORT = Number(process.env.PORT || 4173);
-const HOST = process.env.HOST || '0.0.0.0';
+
+function readCliOption(flagName) {
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === flagName && args[i + 1]) {
+      return args[i + 1];
+    }
+    if (args[i].startsWith(`${flagName}=`)) {
+      return args[i].slice(flagName.length + 1);
+    }
+  }
+  return undefined;
+}
+
+const HOST = readCliOption('--host') || process.env.HOST || '0.0.0.0';
+const PORT = Number(readCliOption('--port') || process.env.PORT || 4173);
 const DEFAULT_OLLAMA = process.env.OLLAMA_ENDPOINT || 'http://127.0.0.1:11434';
 
 const MIME_TYPES = {
@@ -36,11 +54,28 @@ const MIME_TYPES = {
   '.gz': 'application/gzip',
 };
 
+function getLanIPv4Addresses() {
+  const interfaces = os.networkInterfaces();
+  const urls = [];
+  for (const entries of Object.values(interfaces)) {
+    if (!entries) continue;
+    for (const info of entries) {
+      if (info.family === 'IPv4' && !info.internal && info.address) {
+        urls.push(info.address);
+      }
+    }
+  }
+  return urls;
+}
+
 function resolveOllamaOrigin(headerVal) {
   const raw = (Array.isArray(headerVal) ? headerVal[0] : headerVal)?.trim() || DEFAULT_OLLAMA;
   const parsed = new URL(raw);
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('Invalid protocol');
+  }
+  if (parsed.hostname === '0.0.0.0') {
+    parsed.hostname = '127.0.0.1';
   }
   return parsed.origin;
 }
@@ -171,5 +206,15 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  process.stdout.write(`OpenTranslate stateless server listening on http://${HOST}:${PORT}\n`);
+  process.stdout.write(`\nOpenTranslate stateless server bound to ${HOST}:${PORT}\n`);
+  process.stdout.write(`  ➜  Local:   http://localhost:${PORT}/\n`);
+  if (HOST === '0.0.0.0' || HOST === '::') {
+    const lanIps = getLanIPv4Addresses();
+    for (const ip of lanIps) {
+      process.stdout.write(`  ➜  LAN:     http://${ip}:${PORT}/\n`);
+    }
+  } else {
+    process.stdout.write(`  ➜  Host:    http://${HOST}:${PORT}/\n`);
+  }
+  process.stdout.write('\n');
 });

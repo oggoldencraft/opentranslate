@@ -98,3 +98,39 @@ export function buildTranslatedFilename(originalName: string, targetLang: string
   const safeBase = base.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'document';
   return `${safeBase}.${targetLang}.${newExt.replace(/^\./, '')}`;
 }
+
+/**
+ * Copies text to clipboard in both HTTPS/localhost secure contexts (`navigator.clipboard`)
+ * and plain HTTP LAN contexts (`http://192.168.x.x:5173`) where `navigator.clipboard` is restricted.
+ */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand fallback for HTTP LAN contexts
+    }
+  }
+
+  if (typeof document === 'undefined') return false;
+
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
